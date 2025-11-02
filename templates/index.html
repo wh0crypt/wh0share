@@ -8,6 +8,23 @@
 <body>
     <h1>wh0share - File Sharing</h1>
 
+    <!-- Storage Info -->
+    <div class="storage-info">
+        <h2>Storage Usage</h2>
+        <div class="progress-container">
+            <!-- dynamic width -->
+            <div class="progress-bar" style="width: {{ used_percent }}%;"
+                data-level="{% if used_percent < 65 %}low{% elif used_percent < 90 %}medium{% else %}high{% endif %}">
+            </div>
+        </div>
+        <p>
+        <strong>{{ used_percent }}%</strong> used —
+        {{ disk_used }} GB of
+        {{ disk_total }} GB total.<br>
+        <span class="free">{{ disk_free }} GB free</span>
+        </p>
+    </div>
+
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -37,8 +54,20 @@
             <tr>
                 <td>{{ file }}</td>
                 <td>
-                    <a href="{{ url_for('download_file', filename=file) }}">Download</a> |
-                    <a href="{{ url_for('view_file', filename=file) }}" target="_blank">View</a>
+                    <!-- Download button -->
+                    <form action="{{ url_for('download_file', filename=file) }}" method="get" style="display:inline;">
+                        <button type="submit">Download</button>
+                    </form>
+
+                    <!-- View button -->
+                    <form action="{{ url_for('view_file', filename=file) }}" method="get" style="display:inline;" target="_blank">
+                        <button type="submit">View</button>
+                    </form>
+
+                    <!-- Delete button -->
+                    <form action="{{ url_for('delete_file', filename=file) }}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ file }}?');">
+                        <button type="submit">Delete</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}

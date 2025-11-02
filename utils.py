@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import Tuple
 
@@ -38,3 +39,23 @@ def allowed_file(filename: str, allowed_extensions: set) -> bool:
     """
 
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
+
+
+def get_folder_size(folder: str) -> int:
+    """
+    Get the total size of all files in a folder.
+
+    Args:
+        folder (str): The path to the folder.
+
+    Returns:
+        int: The total size of all files in bytes.
+    """
+
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(folder):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total += os.path.getsize(fp)
+
+    return total

@@ -19,30 +19,23 @@ import utils
 load_dotenv(".env")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 SITE_INDEX = os.getenv("SITE_INDEX", "/")
-UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
+UPLOAD_FOLDER = os.path.abspath(os.getenv("UPLOAD_FOLDER", "./uploads"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 ALLOWED_EXTENSIONS = set(
     ext.strip().lower()
     for ext in os.getenv("ALLOWED_EXTENSIONS", "txt,pdf,png,jpg,jpeg,gif").split(",")
 )
-MAX_CONTENT_LENGTH_MB = int(os.getenv("MAX_CONTENT_LENGTH_MB", "1024"))
-
-ENV_VARS = (
-    SECRET_KEY,
-    SITE_INDEX,
-    UPLOAD_FOLDER,
-    DEBUG,
-    ALLOWED_EXTENSIONS,
-    MAX_CONTENT_LENGTH_MB,
-)
-utils.check_env(ENV_VARS)
+MAX_CONTENT_LENGTH_MB = int(os.getenv("MAX_CONTENT_LENGTH_MB", "1024").strip())
+MAX_TOTAL_STORAGE_MB = int(os.getenv("MAX_TOTAL_STORAGE_MB", "10240").strip())
+MAX_CONTENT_LENGTH = MAX_CONTENT_LENGTH_MB * 1024**2
+MAX_TOTAL_STORAGE = MAX_TOTAL_STORAGE_MB * 1024**2
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH_MB * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
 
 @app.route(SITE_INDEX)
@@ -55,7 +48,18 @@ def index() -> str:
     """
 
     files = os.listdir(app.config["UPLOAD_FOLDER"])
-    return render_template("index.html", files=files)
+    used = utils.get_folder_size(app.config["UPLOAD_FOLDER"])
+    free = max(MAX_TOTAL_STORAGE - used, 0)
+    used_percent = round((used / MAX_TOTAL_STORAGE) * 100, 2)
+    gb_divisor = 1024**3
+    return render_template(
+        "index.html",
+        files=files,
+        disk_used=round(used / gb_divisor, 2),
+        disk_total=round(MAX_TOTAL_STORAGE / gb_divisor, 2),
+        disk_free=round(free / gb_divisor, 2),
+        used_percent=used_percent,
+    )
 
 
 @app.route("/upload", methods=["POST"])
@@ -82,6 +86,19 @@ def upload_file() -> Response:
     if not utils.allowed_file(file.filename, ALLOWED_EXTENSIONS):
         flash(
             f"Invalid file type. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}",
+            "error",
+        )
+        return redirect(url_for("index"))
+
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    if (
+        utils.get_folder_size(app.config["UPLOAD_FOLDER"]) + file_size
+        > MAX_TOTAL_STORAGE
+    ):
+        flash(
+            f"Storage limit reached ({MAX_TOTAL_STORAGE_MB} MB). Delete some files first.",
             "error",
         )
         return redirect(url_for("index"))
@@ -121,6 +138,28 @@ def view_file(filename: str) -> Response:
     """
 
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/delete/<filename>", methods=["POST"])
+def delete_file(filename: str) -> Response:
+    """
+    Handle file deletion requests.
+
+    Args:
+        filename (str): Name of the file to delete.
+
+    Returns:
+        Response: Redirects to the index page after deletion.
+    """
+
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        flash(f"File '{filename}' deleted successfully!", "success")
+    else:
+        flash(f"File '{filename}' not found.", "error")
+
+    return redirect(url_for("index"))
 
 
 @app.errorhandler(RequestEntityTooLarge)
