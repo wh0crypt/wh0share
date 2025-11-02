@@ -1,0 +1,22 @@
+# Python bytecode / caches
+__pycache__/
+*.py[co]
+
+# Environments
+.venv/
+
+# Build artifacts
+build/
+dist/
+wheels/
+*.egg-info
+
+# Tool caches
+.ruff_cache/
+.uv_cache/
+
+# Environment files
+.env
+
+# Optional: local test outputs or logs
+*.log
