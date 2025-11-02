@@ -37,7 +37,7 @@ HOST_PORT="8000"
 DEBUG="False"
 ALLOWED_EXTENSIONS="txt,pdf,png,jpg,jpeg,gif"
 MAX_CONTENT_LENGTH_MB="1024"    # default 1 GB
-MAX_TOTAL_STORAGE_MB="10240"    # default 10 GB
+MAX_STORAGE_SIZE_MB="10240"    # default 10 GB
 ```
 
 > You do not need a `.env` file if you are okay with the default uploads directory inside the project and default port `8000`. The `.env` is only necessary if you want files stored in a different directory or to change the exposed port. Check the `.env.example` for reference.

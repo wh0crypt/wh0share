@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 from typing import Tuple
 
@@ -59,3 +60,26 @@ def get_folder_size(folder: str) -> int:
             total += os.path.getsize(fp)
 
     return total
+
+
+def check_available_storage(
+    upload_folder: str, max_storage_bytes: int
+) -> Tuple[bool, int]:
+    """
+    Check if there is enough available storage for the upload folder.
+
+    Args:
+        upload_folder (str): The path to the upload folder.
+        max_storage_bytes (int): The maximum allowed storage in bytes.
+
+    Returns:
+        Tuple[bool, int]: A tuple containing a boolean indicating if there is enough storage
+        and the amount of free disk space available.
+    """
+
+    disk_free_bytes = shutil.disk_usage(upload_folder).free
+    security_margin_bytes = 1024**3
+    if disk_free_bytes - security_margin_bytes < max_storage_bytes:
+        return False, disk_free_bytes - security_margin_bytes
+
+    return True, disk_free_bytes - security_margin_bytes

@@ -26,9 +26,19 @@ ALLOWED_EXTENSIONS = set(
     for ext in os.getenv("ALLOWED_EXTENSIONS", "txt,pdf,png,jpg,jpeg,gif").split(",")
 )
 MAX_CONTENT_LENGTH_MB = int(os.getenv("MAX_CONTENT_LENGTH_MB", "1024").strip())
-MAX_TOTAL_STORAGE_MB = int(os.getenv("MAX_TOTAL_STORAGE_MB", "10240").strip())
+MAX_STORAGE_SIZE_MB = int(os.getenv("MAX_STORAGE_SIZE_MB", "10240").strip())
 MAX_CONTENT_LENGTH = MAX_CONTENT_LENGTH_MB * 1024**2
-MAX_TOTAL_STORAGE = MAX_TOTAL_STORAGE_MB * 1024**2
+MAX_STORAGE_SIZE_BYTES = MAX_STORAGE_SIZE_MB * 1024**2
+
+check, disk_free_bytes = utils.check_available_storage(
+    UPLOAD_FOLDER, MAX_STORAGE_SIZE_BYTES
+)
+
+if not check:
+    raise ValueError(
+        f"MAX_STORAGE_SIZE ({MAX_STORAGE_SIZE_MB} MB) exceeds available disk space "
+        f"minus margin (available: {(disk_free_bytes)//(1024**2)} MB)."
+    )
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -49,14 +59,14 @@ def index() -> str:
 
     files = os.listdir(app.config["UPLOAD_FOLDER"])
     used = utils.get_folder_size(app.config["UPLOAD_FOLDER"])
-    free = max(MAX_TOTAL_STORAGE - used, 0)
-    used_percent = round((used / MAX_TOTAL_STORAGE) * 100, 2)
+    free = max(MAX_STORAGE_SIZE_BYTES - used, 0)
+    used_percent = round((used / MAX_STORAGE_SIZE_BYTES) * 100, 2)
     gb_divisor = 1024**3
     return render_template(
         "index.html",
         files=files,
         disk_used=round(used / gb_divisor, 2),
-        disk_total=round(MAX_TOTAL_STORAGE / gb_divisor, 2),
+        disk_total=round(MAX_STORAGE_SIZE_BYTES / gb_divisor, 2),
         disk_free=round(free / gb_divisor, 2),
         used_percent=used_percent,
     )
@@ -95,10 +105,10 @@ def upload_file() -> Response:
     file.seek(0)
     if (
         utils.get_folder_size(app.config["UPLOAD_FOLDER"]) + file_size
-        > MAX_TOTAL_STORAGE
+        > MAX_STORAGE_SIZE_BYTES
     ):
         flash(
-            f"Storage limit reached ({MAX_TOTAL_STORAGE_MB} MB). Delete some files first.",
+            f"Storage limit reached ({MAX_STORAGE_SIZE_MB} MB). Delete some files first.",
             "error",
         )
         return redirect(url_for("index"))
