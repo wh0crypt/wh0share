@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 from typing import Tuple
 
@@ -77,9 +76,9 @@ def check_available_storage(
         and the amount of free disk space available.
     """
 
-    disk_free_bytes = shutil.disk_usage(upload_folder).free
-    security_margin_bytes = 1024**3
-    if disk_free_bytes - security_margin_bytes < max_storage_bytes:
-        return False, disk_free_bytes - security_margin_bytes
+    stat = os.statvfs(upload_folder)
+    disk_free_bytes = stat.f_bavail * stat.f_frsize
+    security_margin_bytes = 10240**3
+    available_bytes = max(disk_free_bytes - security_margin_bytes, 0)
 
-    return True, disk_free_bytes - security_margin_bytes
+    return available_bytes >= max_storage_bytes, available_bytes
