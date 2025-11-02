@@ -11,29 +11,38 @@ from flask import (
     send_from_directory,
     url_for,
 )
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 import utils
 
 load_dotenv(".env")
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 SITE_INDEX = os.getenv("SITE_INDEX", "/")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
-
 ALLOWED_EXTENSIONS = set(
     ext.strip().lower()
     for ext in os.getenv("ALLOWED_EXTENSIONS", "txt,pdf,png,jpg,jpeg,gif").split(",")
 )
+MAX_CONTENT_LENGTH_MB = int(os.getenv("MAX_CONTENT_LENGTH_MB", "1024"))
 
-ENV_VARS = (SITE_INDEX, UPLOAD_FOLDER, DEBUG, ALLOWED_EXTENSIONS, SECRET_KEY)
+ENV_VARS = (
+    SECRET_KEY,
+    SITE_INDEX,
+    UPLOAD_FOLDER,
+    DEBUG,
+    ALLOWED_EXTENSIONS,
+    MAX_CONTENT_LENGTH_MB,
+)
 utils.check_env(ENV_VARS)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = SECRET_KEY
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH_MB * 1024 * 1024
 
 
 @app.route(SITE_INDEX)
@@ -112,6 +121,12 @@ def view_file(filename: str) -> Response:
     """
 
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    flash(f"File too large (max {MAX_CONTENT_LENGTH_MB} MB).", "error")
+    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
