@@ -39,15 +39,11 @@ brew install uv
 
 ### Format and Lint
 
-Before committing, run:
+Before committing format all the project files with:
 
 ```bash
-uv run --only-group lint black .
-uv run --only-group lint isort .
-uv run --only-group lint ruff check . --fix
+uv run pre-commit run --all-files
 ```
-
-> There is a pre-commit hook set up to run UV scripts automatically before each commit. Optionally, you can run them manually as shown above or using the `format.sh` script.
 
 ## Making Changes
 
@@ -88,8 +84,8 @@ docker-compose up -d
 1. Fork the repository
 2. Create a new branch for your feature/fix
 3. Make your changes
-4. Run UV scripts before submitting (optional if pre-commit is active)
-5. Test with Docker Compose
+4. Test with Docker Compose
+5. Run pre-commit script before committing
 6. Submit a PR with a clear description
 
 ## Issue Reporting
