@@ -1,0 +1,118 @@
+import os
+
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    Response,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+import utils
+
+load_dotenv(".env")
+SITE_INDEX = os.getenv("SITE_INDEX", "/")
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
+
+ALLOWED_EXTENSIONS = set(
+    ext.strip().lower()
+    for ext in os.getenv("ALLOWED_EXTENSIONS", "txt,pdf,png,jpg,jpeg,gif").split(",")
+)
+
+ENV_VARS = (SITE_INDEX, UPLOAD_FOLDER, DEBUG, ALLOWED_EXTENSIONS, SECRET_KEY)
+utils.check_env(ENV_VARS)
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.secret_key = SECRET_KEY
+
+
+@app.route(SITE_INDEX)
+def index() -> str:
+    """
+    Render the main page with the list of uploaded files.
+
+    Returns:
+        str: HTML content for the index page.
+    """
+
+    files = os.listdir(app.config["UPLOAD_FOLDER"])
+    return render_template("index.html", files=files)
+
+
+@app.route("/upload", methods=["POST"])
+def upload_file() -> Response:
+    """
+    Handle file uploads from the web interface.
+
+    Validates the uploaded file type and flashes an error message if invalid.
+
+    Returns:
+        Response: Redirects to the index page after upload.
+    """
+
+    if "file" not in request.files:
+        flash("No file part in the request", "error")
+        return redirect(url_for("index"))
+
+    file = request.files["file"]
+    if not file or file.filename == "":
+        flash("No file selected", "error")
+        return redirect(url_for("index"))
+
+    filename = secure_filename(file.filename)
+    if not utils.allowed_file(file.filename, ALLOWED_EXTENSIONS):
+        flash(
+            f"Invalid file type. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}",
+            "error",
+        )
+        return redirect(url_for("index"))
+
+    file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    flash(f"File '{filename}' uploaded successfully!", "success")
+    return redirect(url_for("index"))
+
+
+@app.route("/download/<filename>")
+def download_file(filename: str) -> Response:
+    """
+    Serve a file for download.
+
+    Args:
+        filename (str): Name of the file to download.
+
+    Returns:
+        Response: Flask response to send the file as an attachment.
+    """
+
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"], filename, as_attachment=True
+    )
+
+
+@app.route("/uploads/<filename>")
+def view_file(filename: str) -> Response:
+    """
+    Serve a file for inline viewing in the browser.
+
+    Args:
+        filename (str): Name of the file to serve.
+
+    Returns:
+        Response: Flask response to send the file.
+    """
+
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+if __name__ == "__main__":
+    app.run(debug=DEBUG, host="0.0.0.0", port=8000)

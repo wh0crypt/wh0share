@@ -1,0 +1,35 @@
+# Python bytecode / caches
+__pycache__/
+*.py[co]
+.venv/
+.ruff_cache/
+.uv_cache/
+
+# Build artifacts
+build/
+dist/
+wheels/
+*.egg-info
+
+# Editor / IDE
+.vscode/
+
+# Environment files
+.env
+.env.example
+
+# Versioning / project settings
+.gitignore
+.pre-commit-config.yaml
+.python-version
+
+# Docker / scripts
+format.sh
+
+# Documentation
+README.md
+CONTRIBUTING.md
+LICENSE
+
+# Optional: lock files
+uv.lock
